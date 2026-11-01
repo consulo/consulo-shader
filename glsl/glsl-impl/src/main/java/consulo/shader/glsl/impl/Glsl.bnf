@@ -1,0 +1,339 @@
+// Copyright 2013-2026 consulo.io
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Grammar of GLSL and of its dialects (OpenGL, OpenGL ES, Vulkan, Godot shaders). Declarations follow the GLSL 4.60
+// specification grammar; the statement and expression rules and the Godot rules are adapted from gdshader-support
+// (https://github.com/akghxhs55/gdshader-support, MIT License, Copyright (c) 2025-2026 Jaeho Yi), see NOTICE.txt.
+//
+// Preprocessor lines are single comment-like tokens (GlslTokens.PREPROCESSOR_LINE) and never reach this grammar.
+// Dialect-only keywords exist only in their dialect's lexer, so the rules using them match nowhere else.
+{
+  parserClass="consulo.shader.glsl.impl.parser.GlslParser"
+
+  extends="consulo.language.impl.psi.ASTWrapperPsiElement"
+
+  psiClassPrefix="Glsl"
+  psiImplClassSuffix="Impl"
+  psiPackage="consulo.shader.glsl.impl.psi"
+  psiImplPackage="consulo.shader.glsl.impl.psi.impl"
+
+  elementTypeHolderClass="consulo.shader.glsl.impl.psi.GlslTypes"
+  elementTypeClass="consulo.shader.glsl.impl.psi.GlslElementType"
+  tokenTypeClass="consulo.shader.glsl.impl.psi.GlslTokenType"
+
+  extends(".*_expr")=expression
+  extends(".*_statement")=statement
+
+  tokens=[
+    LEFT_PAREN='('
+    RIGHT_PAREN=')'
+    LEFT_BRACKET='['
+    RIGHT_BRACKET=']'
+    LEFT_BRACE='{'
+    RIGHT_BRACE='}'
+    DOT='.'
+    COMMA=','
+    COLON=':'
+    SEMICOLON=';'
+    QUESTION='?'
+
+    EQUAL='='
+    LEFT_ASSIGN='<<='
+    RIGHT_ASSIGN='>>='
+    ADD_ASSIGN='+='
+    SUB_ASSIGN='-='
+    MUL_ASSIGN='*='
+    DIV_ASSIGN='/='
+    MOD_ASSIGN='%='
+    AND_ASSIGN='&='
+    XOR_ASSIGN='^='
+    OR_ASSIGN='|='
+
+    INC_OP='++'
+    DEC_OP='--'
+    AND_OP='&&'
+    OR_OP='||'
+    XOR_OP='^^'
+    LEFT_OP='<<'
+    RIGHT_OP='>>'
+    LE_OP='<='
+    GE_OP='>='
+    EQ_OP='=='
+    NE_OP='!='
+    BANG='!'
+    DASH='-'
+    TILDE='~'
+    PLUS='+'
+    STAR='*'
+    SLASH='/'
+    PERCENT='%'
+    LEFT_ANGLE='<'
+    RIGHT_ANGLE='>'
+    VERTICAL_BAR='|'
+    CARET='^'
+    AMPERSAND='&'
+
+    IDENTIFIER='identifier'
+    TYPE='type name'
+    INTEGER_LITERAL='integer literal'
+    FLOAT_LITERAL='float literal'
+    BOOL_LITERAL='bool literal'
+    STRING_LITERAL='string literal'
+
+    STRUCT='struct'
+    LAYOUT='layout'
+    PRECISION='precision'
+    PRECISION_QUALIFIER='precision qualifier'
+    SUBROUTINE='subroutine'
+    QUALIFIER='qualifier'
+    IF='if'
+    ELSE='else'
+    SWITCH='switch'
+    CASE='case'
+    DEFAULT='default'
+    WHILE='while'
+    DO='do'
+    FOR='for'
+    BREAK='break'
+    CONTINUE='continue'
+    RETURN='return'
+    DISCARD='discard'
+    EXTENSION_JUMP='jump statement'
+
+    SHADER_TYPE='shader_type'
+    RENDER_MODE='render_mode'
+    STENCIL_MODE='stencil_mode'
+    GROUP_UNIFORMS='group_uniforms'
+    GLOBAL='global'
+    INSTANCE='instance'
+    HINT='hint'
+  ]
+}
+
+file ::= top_level_item*
+
+private top_level_item ::= !<<eof>> top_level_declaration {pin=1 recoverWhile=top_level_recover}
+
+private top_level_declaration ::= shader_type_declaration
+                                | render_mode_declaration
+                                | stencil_mode_declaration
+                                | group_uniforms_declaration
+                                | precision_declaration
+                                | function_declaration
+                                | interface_block
+                                | variable_declaration
+                                | qualifier_declaration
+                                | empty_declaration
+
+private top_level_recover ::= !(TYPE | QUALIFIER | PRECISION_QUALIFIER | LAYOUT | STRUCT | PRECISION | SUBROUTINE | IDENTIFIER
+                              | SEMICOLON | RIGHT_BRACE | SHADER_TYPE | RENDER_MODE | STENCIL_MODE | GROUP_UNIFORMS
+                              | GLOBAL | INSTANCE)
+
+empty_declaration ::= SEMICOLON
+
+// Godot shaders
+
+shader_type_declaration ::= SHADER_TYPE IDENTIFIER SEMICOLON {pin=1}
+
+render_mode_declaration ::= RENDER_MODE mode_item (COMMA mode_item)* SEMICOLON {pin=1}
+
+stencil_mode_declaration ::= STENCIL_MODE mode_item (COMMA mode_item)* SEMICOLON {pin=1}
+
+mode_item ::= IDENTIFIER | INTEGER_LITERAL
+
+group_uniforms_declaration ::= GROUP_UNIFORMS (IDENTIFIER (DOT IDENTIFIER)*)? SEMICOLON {pin=1}
+
+hint_list ::= COLON uniform_hint (COMMA uniform_hint)* {pin=1}
+
+// an identifier too: hint names are contextual words in Godot, and a hint being typed is not a complete one yet
+uniform_hint ::= (HINT | IDENTIFIER) argument_list?
+
+// Declarations
+
+precision_declaration ::= PRECISION PRECISION_QUALIFIER type_specifier SEMICOLON {pin=1}
+
+function_declaration ::= qualifier_list? type_specifier IDENTIFIER parameter_list (compound_statement | SEMICOLON) {pin=4 mixin="consulo.shader.glsl.impl.psi.GlslFunctionMixin" implements=["consulo.shader.psi.ShaderFunction" "consulo.shader.psi.ShaderDeclarationProvider"]}
+
+parameter_list ::= LEFT_PAREN [parameter (COMMA parameter)*] RIGHT_PAREN {pin=1}
+
+parameter ::= qualifier_list? type_specifier (IDENTIFIER array_specifier*)? {mixin="consulo.shader.glsl.impl.psi.GlslNamedElementMixin" implements="consulo.shader.psi.ShaderParameter"}
+
+interface_block ::= qualifier_list IDENTIFIER LEFT_BRACE struct_member* RIGHT_BRACE (IDENTIFIER array_specifier*)? SEMICOLON {pin=3 mixin="consulo.shader.glsl.impl.psi.GlslInterfaceBlockMixin" implements=["consulo.shader.psi.ShaderNamedElement" "consulo.shader.psi.ShaderDeclarationProvider"]}
+
+variable_declaration ::= qualifier_list? type_specifier declarator (COMMA declarator)* SEMICOLON
+                       | qualifier_list? struct_specifier SEMICOLON {implements="consulo.shader.psi.ShaderDeclarationContainer"}
+
+declarator ::= IDENTIFIER array_specifier* hint_list? (EQUAL initializer)? {mixin="consulo.shader.glsl.impl.psi.GlslNamedElementMixin" implements="consulo.shader.psi.ShaderVariable"}
+
+qualifier_declaration ::= qualifier_list (IDENTIFIER (COMMA IDENTIFIER)*)? SEMICOLON
+
+qualifier_list ::= type_qualifier+
+
+type_qualifier ::= layout_qualifier
+            | subroutine_qualifier
+            | QUALIFIER
+            | PRECISION_QUALIFIER
+            | GLOBAL
+            | INSTANCE
+
+layout_qualifier ::= LAYOUT LEFT_PAREN layout_qualifier_id (COMMA layout_qualifier_id)* RIGHT_PAREN {pin=1}
+
+layout_qualifier_id ::= (IDENTIFIER | QUALIFIER) (EQUAL expression)?
+
+subroutine_qualifier ::= SUBROUTINE (LEFT_PAREN type_name (COMMA type_name)* RIGHT_PAREN)? {pin=1}
+
+type_specifier ::= (TYPE | struct_specifier | type_name) array_specifier* {implements="consulo.shader.psi.ShaderTypeSpecifier"}
+
+type_name ::= IDENTIFIER {mixin="consulo.shader.glsl.impl.psi.GlslTypeNameMixin" implements="consulo.shader.psi.ShaderReferenceElement"}
+
+struct_specifier ::= STRUCT IDENTIFIER? LEFT_BRACE struct_member* RIGHT_BRACE {pin=1 mixin="consulo.shader.glsl.impl.psi.GlslNamedElementMixin" implements="consulo.shader.psi.ShaderTypeDefinition"}
+
+struct_member ::= qualifier_list? type_specifier declarator (COMMA declarator)* SEMICOLON {pin=2 recoverWhile=struct_member_recover}
+
+private struct_member_recover ::= !(RIGHT_BRACE | TYPE | QUALIFIER | PRECISION_QUALIFIER | LAYOUT | STRUCT | IDENTIFIER)
+
+array_specifier ::= LEFT_BRACKET expression? RIGHT_BRACKET {implements="consulo.shader.psi.ShaderArraySpecifier"}
+
+initializer ::= initializer_list | expression
+
+initializer_list ::= LEFT_BRACE [initializer (COMMA initializer)* COMMA?] RIGHT_BRACE {pin=1}
+
+// Statements
+
+statement ::= compound_statement
+            | declaration_statement
+            | if_statement
+            | switch_statement
+            | case_label_statement
+            | while_statement
+            | do_statement
+            | for_statement
+            | jump_statement
+            | return_statement
+            | empty_statement
+            | expression_statement
+
+compound_statement ::= LEFT_BRACE block_item* RIGHT_BRACE {pin=1 mixin="consulo.shader.glsl.impl.psi.GlslLocalScopeMixin" implements="consulo.shader.psi.ShaderLocalScope"}
+
+private block_item ::= !RIGHT_BRACE statement {pin=1 recoverWhile=block_item_recover}
+
+// every token that can start a statement, expressions included: recoverWhile also runs after a statement that parsed
+private block_item_recover ::= !(SEMICOLON | RIGHT_BRACE | LEFT_BRACE | TYPE | QUALIFIER | PRECISION_QUALIFIER | STRUCT
+                               | LAYOUT | PRECISION | IF | SWITCH | CASE | DEFAULT | WHILE | DO | FOR | BREAK | CONTINUE
+                               | RETURN | DISCARD | EXTENSION_JUMP | IDENTIFIER | INTEGER_LITERAL | FLOAT_LITERAL
+                               | BOOL_LITERAL | STRING_LITERAL | LEFT_PAREN | PLUS | DASH | BANG | TILDE | INC_OP | DEC_OP)
+
+declaration_statement ::= variable_declaration | precision_declaration | function_prototype_declaration {implements="consulo.shader.psi.ShaderDeclarationContainer"}
+
+// a prototype inside a function body; the GLSL grammar accepts it, the compiler rejects it
+function_prototype_declaration ::= qualifier_list? type_specifier IDENTIFIER parameter_list SEMICOLON {mixin="consulo.shader.glsl.impl.psi.GlslFunctionMixin" implements=["consulo.shader.psi.ShaderFunction" "consulo.shader.psi.ShaderDeclarationProvider"]}
+
+expression_statement ::= expression_list SEMICOLON
+
+empty_statement ::= SEMICOLON
+
+if_statement ::= IF LEFT_PAREN expression RIGHT_PAREN statement (ELSE statement)? {pin=1}
+
+switch_statement ::= SWITCH LEFT_PAREN expression RIGHT_PAREN compound_statement {pin=1}
+
+case_label_statement ::= (CASE expression | DEFAULT) COLON {pin=1}
+
+while_statement ::= WHILE LEFT_PAREN expression RIGHT_PAREN statement {pin=1}
+
+do_statement ::= DO statement WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON {pin=1}
+
+for_statement ::= FOR LEFT_PAREN for_init expression? SEMICOLON expression_list? RIGHT_PAREN statement {pin=1 mixin="consulo.shader.glsl.impl.psi.GlslLocalScopeMixin" implements="consulo.shader.psi.ShaderLocalScope"}
+
+private for_init ::= variable_declaration | expression_statement | SEMICOLON
+
+jump_statement ::= (BREAK | CONTINUE | DISCARD | EXTENSION_JUMP) SEMICOLON {pin=1}
+
+return_statement ::= RETURN expression? SEMICOLON {pin=1}
+
+// Expressions, lowest priority first
+
+expression_list ::= expression (COMMA expression)*
+
+expression ::= assignment_expr
+             | conditional_expr
+             | logical_or_expr
+             | logical_xor_expr
+             | logical_and_expr
+             | bitwise_or_expr
+             | bitwise_xor_expr
+             | bitwise_and_expr
+             | equality_expr
+             | relational_expr
+             | shift_expr
+             | additive_expr
+             | multiplicative_expr
+             | prefix_expr
+             | postfix_group
+             | primary_group
+
+assignment_expr ::= expression assignment_operator expression {rightAssociative=true}
+
+private assignment_operator ::= EQUAL | LEFT_ASSIGN | RIGHT_ASSIGN | ADD_ASSIGN | SUB_ASSIGN | MUL_ASSIGN | DIV_ASSIGN
+                              | MOD_ASSIGN | AND_ASSIGN | XOR_ASSIGN | OR_ASSIGN
+
+conditional_expr ::= expression QUESTION expression COLON expression {rightAssociative=true}
+
+logical_or_expr ::= expression OR_OP expression
+
+logical_xor_expr ::= expression XOR_OP expression
+
+logical_and_expr ::= expression AND_OP expression
+
+bitwise_or_expr ::= expression VERTICAL_BAR expression
+
+bitwise_xor_expr ::= expression CARET expression
+
+bitwise_and_expr ::= expression AMPERSAND expression
+
+equality_expr ::= expression (EQ_OP | NE_OP) expression
+
+relational_expr ::= expression (LEFT_ANGLE | RIGHT_ANGLE | LE_OP | GE_OP) expression
+
+shift_expr ::= expression (LEFT_OP | RIGHT_OP) expression
+
+additive_expr ::= expression (PLUS | DASH) expression
+
+multiplicative_expr ::= expression (STAR | SLASH | PERCENT) expression
+
+prefix_expr ::= (PLUS | DASH | BANG | TILDE | INC_OP | DEC_OP) expression
+
+private postfix_group ::= call_expr | index_expr | member_expr | postfix_expr
+
+call_expr ::= expression argument_list {implements="consulo.shader.psi.ShaderCallExpression"}
+
+index_expr ::= expression LEFT_BRACKET index_value RIGHT_BRACKET {implements="consulo.shader.psi.ShaderIndexExpression"}
+
+// a separate rule, so that the index is a full expression and not an operand of the postfix priority
+private index_value ::= expression
+
+member_expr ::= expression DOT IDENTIFIER {mixin="consulo.shader.glsl.impl.psi.GlslMemberExprMixin" implements="consulo.shader.psi.ShaderMemberAccess"}
+
+postfix_expr ::= expression (INC_OP | DEC_OP)
+
+private primary_group ::= literal_expr | constructor_expr | reference_expr | parenthesized_expr
+
+literal_expr ::= INTEGER_LITERAL | FLOAT_LITERAL | BOOL_LITERAL | STRING_LITERAL
+
+constructor_expr ::= TYPE array_specifier* {implements="consulo.shader.psi.ShaderConstructorExpression"}
+
+reference_expr ::= IDENTIFIER {mixin="consulo.shader.glsl.impl.psi.GlslReferenceExprMixin" implements="consulo.shader.psi.ShaderReferenceElement"}
+
+parenthesized_expr ::= LEFT_PAREN expression RIGHT_PAREN {pin=1 implements="consulo.shader.psi.ShaderParenthesizedExpression"}
+
+argument_list ::= LEFT_PAREN [initializer (COMMA initializer)*] RIGHT_PAREN {pin=1}

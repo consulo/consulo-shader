@@ -1,0 +1,10 @@
+find.usages.function:
+    text: function
+find.usages.variable:
+    text: variable
+find.usages.parameter:
+    text: parameter
+find.usages.type:
+    text: type
+unresolved.symbol:
+    text: Cannot resolve symbol ''{0}''

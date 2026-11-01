@@ -1,0 +1,5 @@
+; Minimal Godot 4 project file, only so that res:// paths resolve.
+config_version=5
+
+[application]
+config/name="Shader Samples"

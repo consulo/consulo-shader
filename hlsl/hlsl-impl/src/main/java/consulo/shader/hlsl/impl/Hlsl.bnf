@@ -1,0 +1,433 @@
+// Copyright 2013-2026 consulo.io
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// The grammar of HLSL (Shader Model 5 and 6, HLSL 2021 templates), of the Direct3D effect framework (techniques, passes,
+// state objects, annotations) and of Cg, which share one syntax.
+//
+// Preprocessor lines are single comment-like tokens (HlslTokens.PREPROCESSOR_LINE) and never reach this grammar. Code
+// written against unexpanded macros is tolerated where it is common: macro invocations as top-level declarations and
+// struct members (CBUFFER_START(Name), UNITY_VERTEX_INPUT_INSTANCE_ID), and macros used as statement attributes
+// (UNITY_BRANCH if, UNROLL for).
+{
+  parserClass="consulo.shader.hlsl.impl.parser.HlslParser"
+
+  extends="consulo.language.impl.psi.ASTWrapperPsiElement"
+
+  psiClassPrefix="Hlsl"
+  psiImplClassSuffix="Impl"
+  psiPackage="consulo.shader.hlsl.impl.psi"
+  psiImplPackage="consulo.shader.hlsl.impl.psi.impl"
+
+  elementTypeHolderClass="consulo.shader.hlsl.impl.psi.HlslTypes"
+  elementTypeClass="consulo.shader.hlsl.impl.psi.HlslElementType"
+  tokenTypeClass="consulo.shader.hlsl.impl.psi.HlslTokenType"
+
+  extends(".*_expr")=expression
+  extends(".*_statement")=statement
+
+  tokens=[
+    LEFT_PAREN='('
+    RIGHT_PAREN=')'
+    LEFT_BRACKET='['
+    RIGHT_BRACKET=']'
+    LEFT_BRACE='{'
+    RIGHT_BRACE='}'
+    DOT='.'
+    COMMA=','
+    COLON_COLON='::'
+    COLON=':'
+    SEMICOLON=';'
+    QUESTION='?'
+
+    EQUAL='='
+    LEFT_ASSIGN='<<='
+    RIGHT_ASSIGN='>>='
+    ADD_ASSIGN='+='
+    SUB_ASSIGN='-='
+    MUL_ASSIGN='*='
+    DIV_ASSIGN='/='
+    MOD_ASSIGN='%='
+    AND_ASSIGN='&='
+    XOR_ASSIGN='^='
+    OR_ASSIGN='|='
+
+    INC_OP='++'
+    DEC_OP='--'
+    AND_OP='&&'
+    OR_OP='||'
+    LEFT_OP='<<'
+    RIGHT_OP='>>'
+    LE_OP='<='
+    GE_OP='>='
+    EQ_OP='=='
+    NE_OP='!='
+    BANG='!'
+    DASH='-'
+    TILDE='~'
+    PLUS='+'
+    STAR='*'
+    SLASH='/'
+    PERCENT='%'
+    LEFT_ANGLE='<'
+    RIGHT_ANGLE='>'
+    VERTICAL_BAR='|'
+    CARET='^'
+    AMPERSAND='&'
+
+    IDENTIFIER='identifier'
+    TYPE='type name'
+    INTEGER_LITERAL='integer literal'
+    FLOAT_LITERAL='float literal'
+    BOOL_LITERAL='bool literal'
+    STRING_LITERAL='string literal'
+
+    QUALIFIER='qualifier'
+    SOFT_QUALIFIER='contextual qualifier'
+    STRUCT='struct'
+    CBUFFER='cbuffer'
+    TYPEDEF='typedef'
+    NAMESPACE='namespace'
+    ENUM='enum'
+    TEMPLATE='template'
+    TYPENAME='typename'
+    REGISTER='register'
+    PACKOFFSET='packoffset'
+    THIS='this'
+    SIZEOF='sizeof'
+    TECHNIQUE='technique'
+    PASS='pass'
+    COMPILE='compile'
+    SAMPLER_STATE='sampler_state'
+    OPERATOR='operator'
+    IF='if'
+    ELSE='else'
+    SWITCH='switch'
+    CASE='case'
+    DEFAULT='default'
+    WHILE='while'
+    DO='do'
+    FOR='for'
+    BREAK='break'
+    CONTINUE='continue'
+    RETURN='return'
+    DISCARD='discard'
+  ]
+}
+
+file ::= top_level_item*
+
+private top_level_item ::= !<<eof>> top_level_declaration {pin=1 recoverWhile=top_level_recover}
+
+private top_level_declaration ::= namespace_declaration
+                                | template_declaration
+                                | buffer_declaration
+                                | typedef_declaration
+                                | enum_declaration
+                                | technique_declaration
+                                | function_declaration
+                                | variable_declaration
+                                | macro_declaration
+                                | empty_declaration
+
+private top_level_recover ::= !(TYPE | QUALIFIER | SOFT_QUALIFIER | STRUCT | CBUFFER | TYPEDEF | NAMESPACE | ENUM | TEMPLATE
+                              | TECHNIQUE | IDENTIFIER | LEFT_BRACKET | SEMICOLON | RIGHT_BRACE)
+
+empty_declaration ::= SEMICOLON
+
+// a macro invocation standing for declarations: CBUFFER_START(UnityPerMaterial), UNITY_DECLARE_TEX2D(_MainTex);
+macro_declaration ::= IDENTIFIER argument_list? SEMICOLON?
+
+namespace_declaration ::= NAMESPACE IDENTIFIER LEFT_BRACE namespace_item* RIGHT_BRACE SEMICOLON? {pin=1 mixin="consulo.shader.hlsl.impl.psi.HlslNamedElementMixin" implements=["consulo.shader.psi.ShaderDeclarationContainer" "consulo.shader.psi.ShaderUnorderedScope"]}
+
+private namespace_item ::= !(RIGHT_BRACE | <<eof>>) top_level_declaration {pin=1 recoverWhile=top_level_recover}
+
+template_declaration ::= TEMPLATE template_parameter_list (function_declaration | variable_declaration) {pin=1 mixin="consulo.shader.impl.psi.ShaderUnorderedScopeBase" implements=["consulo.shader.psi.ShaderDeclarationContainer" "consulo.shader.psi.ShaderUnorderedScope"]}
+
+template_parameter_list ::= LEFT_ANGLE [template_parameter (COMMA template_parameter)*] RIGHT_ANGLE {pin=1}
+
+template_parameter ::= (TYPENAME | STRUCT) IDENTIFIER (EQUAL type_specifier)?
+                     | type_specifier IDENTIFIER (EQUAL template_default)? {mixin="consulo.shader.hlsl.impl.psi.HlslNamedElementMixin" implements="consulo.shader.psi.ShaderTemplateParameter"}
+
+// a literal or a type: an expression would take the closing > as a comparison
+private template_default ::= literal_expr | prefix_expr | type_specifier
+
+// cbuffer and tbuffer
+buffer_declaration ::= attribute_list? CBUFFER IDENTIFIER semantic* LEFT_BRACE buffer_member* RIGHT_BRACE SEMICOLON? {pin=2 mixin="consulo.shader.hlsl.impl.psi.HlslNamedElementMixin" implements="consulo.shader.psi.ShaderDeclarationContainer"}
+
+private buffer_member ::= !RIGHT_BRACE (variable_declaration | macro_declaration | empty_declaration) {pin=1 recoverWhile=member_recover}
+
+private member_recover ::= !(RIGHT_BRACE | TYPE | QUALIFIER | SOFT_QUALIFIER | STRUCT | TYPEDEF | ENUM | TEMPLATE | IDENTIFIER
+                           | LEFT_BRACKET | SEMICOLON)
+
+typedef_declaration ::= TYPEDEF modifier_list? (struct_specifier | type_specifier) typedef_name (COMMA typedef_name)* SEMICOLON {pin=1 implements="consulo.shader.psi.ShaderDeclarationContainer"}
+
+typedef_name ::= IDENTIFIER array_specifier* {mixin="consulo.shader.hlsl.impl.psi.HlslNamedElementMixin" implements="consulo.shader.psi.ShaderTypeAlias"}
+
+enum_declaration ::= ENUM STRUCT? IDENTIFIER? (COLON type_specifier)? LEFT_BRACE [enum_constant (COMMA enum_constant)* COMMA?] RIGHT_BRACE (declarator (COMMA declarator)*)? SEMICOLON {pin=1 mixin="consulo.shader.hlsl.impl.psi.HlslNamedElementMixin" implements=["consulo.shader.psi.ShaderTypeDefinition" "consulo.shader.psi.ShaderDeclarationContainer"]}
+
+enum_constant ::= IDENTIFIER (EQUAL expression)? {mixin="consulo.shader.hlsl.impl.psi.HlslNamedElementMixin" implements="consulo.shader.psi.ShaderVariable"}
+
+// Effect framework: technique T { pass P { VertexShader = compile vs_3_0 VS(); } }
+
+technique_declaration ::= TECHNIQUE IDENTIFIER? annotation? LEFT_BRACE pass_declaration* RIGHT_BRACE SEMICOLON? {pin=1}
+
+pass_declaration ::= PASS IDENTIFIER? annotation? state_block SEMICOLON? {pin=1}
+
+// the body of a pass or a state object: BlendState B { BlendEnable[0] = TRUE; }, sampler_state { Texture = <t>; }
+state_block ::= LEFT_BRACE state_item* RIGHT_BRACE {pin=1}
+
+private state_item ::= !RIGHT_BRACE (state_assignment | expression_statement | empty_statement) {pin=1 recoverWhile=state_item_recover}
+
+private state_item_recover ::= !(RIGHT_BRACE | SEMICOLON | IDENTIFIER | TYPE)
+
+state_assignment ::= state_name (LEFT_BRACKET expression RIGHT_BRACKET)? EQUAL state_value SEMICOLON {pin=3}
+
+private state_name ::= IDENTIFIER | TYPE | QUALIFIER | SOFT_QUALIFIER | PASS | COMPILE
+
+private state_value ::= LEFT_ANGLE IDENTIFIER RIGHT_ANGLE | compile_expr | initializer
+
+// Annotations of the effect framework: float f < string UIName = "F"; > = 1;
+annotation ::= LEFT_ANGLE annotation_item* RIGHT_ANGLE
+
+private annotation_item ::= modifier_list? type_specifier name array_specifier* EQUAL initializer SEMICOLON | SEMICOLON
+
+// Declarations
+
+function_declaration ::= attribute_list? modifier_list? type_specifier function_name parameter_list semantic* (compound_statement | SEMICOLON) {pin=5 mixin="consulo.shader.hlsl.impl.psi.HlslFunctionMixin" implements=["consulo.shader.psi.ShaderFunction" "consulo.shader.psi.ShaderDeclarationProvider"]}
+
+// S::f for a method defined outside its struct, operator[] for an overloaded operator (HLSL 2021)
+private function_name ::= name (COLON_COLON IDENTIFIER)* | OPERATOR overloadable_operator
+
+private overloadable_operator ::= LEFT_BRACKET RIGHT_BRACKET | LEFT_PAREN RIGHT_PAREN | PLUS | DASH | STAR | SLASH | PERCENT
+                                | EQ_OP | NE_OP | LEFT_ANGLE | RIGHT_ANGLE | LE_OP | GE_OP | AMPERSAND | VERTICAL_BAR | CARET
+                                | BANG | TILDE | INC_OP | DEC_OP | LEFT_OP | RIGHT_OP | AND_OP | OR_OP | EQUAL | ADD_ASSIGN
+                                | SUB_ASSIGN | MUL_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | AND_ASSIGN | OR_ASSIGN | XOR_ASSIGN
+                                | LEFT_ASSIGN | RIGHT_ASSIGN
+
+parameter_list ::= LEFT_PAREN [parameter (COMMA parameter)*] RIGHT_PAREN {pin=1}
+
+parameter ::= attribute_list? modifier_list? type_specifier name? array_specifier* semantic* (EQUAL initializer)? {mixin="consulo.shader.hlsl.impl.psi.HlslNamedElementMixin" implements="consulo.shader.psi.ShaderParameter"}
+
+variable_declaration ::= attribute_list? modifier_list? (struct_specifier (declarator (COMMA declarator)*)?
+                                                       | type_specifier QUALIFIER* declarator (COMMA declarator)*) SEMICOLON {implements="consulo.shader.psi.ShaderDeclarationContainer"}
+
+// if (float x = f()): a declaration as the condition of if and while
+condition_declaration ::= modifier_list? type_specifier QUALIFIER* declarator {implements="consulo.shader.psi.ShaderDeclarationContainer"}
+
+private condition ::= condition_declaration | expression
+
+declarator ::= name array_specifier* semantic* annotation? (EQUAL initializer | state_block)? {mixin="consulo.shader.hlsl.impl.psi.HlslNamedElementMixin" implements="consulo.shader.psi.ShaderVariable"}
+
+// contextual qualifiers (line, point, sample, ...) are names where a name is expected
+private name ::= IDENTIFIER | SOFT_QUALIFIER
+
+modifier_list ::= (QUALIFIER | SOFT_QUALIFIER)+
+
+// : SV_Position, : register(t0, space1), : packoffset(c0.x), or a macro expanding to one: : DMACRO(2)
+semantic ::= COLON (register_binding | packoffset_binding | IDENTIFIER argument_list?)
+
+register_binding ::= REGISTER LEFT_PAREN register_argument (COMMA register_argument)* RIGHT_PAREN {pin=1}
+
+private register_argument ::= IDENTIFIER (LEFT_BRACKET expression RIGHT_BRACKET)?
+
+packoffset_binding ::= PACKOFFSET LEFT_PAREN IDENTIFIER (DOT IDENTIFIER)? RIGHT_PAREN {pin=1}
+
+// [numthreads(8, 8, 1)], [unroll], [[vk::binding(0, 1)]]
+attribute_list ::= attribute+
+
+attribute ::= LEFT_BRACKET LEFT_BRACKET? attribute_item (COMMA attribute_item)* RIGHT_BRACKET RIGHT_BRACKET?
+
+private attribute_item ::= [attribute_name argument_list?]
+
+private attribute_name ::= (IDENTIFIER | TYPE | QUALIFIER | SOFT_QUALIFIER) (COLON_COLON IDENTIFIER)*
+
+// struct S s; names a struct as in C
+type_specifier ::= STRUCT? (TYPE | type_name) template_argument_list? array_specifier* {implements="consulo.shader.psi.ShaderTypeSpecifier"}
+
+type_name ::= IDENTIFIER (COLON_COLON IDENTIFIER)* {mixin="consulo.shader.hlsl.impl.psi.HlslTypeNameMixin" implements="consulo.shader.psi.ShaderReferenceElement"}
+
+// vector<float, 4>, Texture2D<float4>, StructuredBuffer<Light>
+template_argument_list ::= LEFT_ANGLE template_argument (COMMA template_argument)* RIGHT_ANGLE
+
+// Texture3D<unorm float4>
+private template_argument ::= QUALIFIER* type_specifier | literal_expr
+
+// a built-in type name only in the generated built-ins: class Texture2D
+struct_specifier ::= STRUCT (IDENTIFIER | TYPE)? (COLON type_name (COMMA type_name)*)? LEFT_BRACE struct_member* RIGHT_BRACE {pin=4 mixin="consulo.shader.hlsl.impl.psi.HlslNamedElementMixin" implements=["consulo.shader.psi.ShaderTypeDefinition" "consulo.shader.psi.ShaderUnorderedScope"]}
+
+// fields, methods (HLSL 2021) and macros expanding to fields: UNITY_VERTEX_INPUT_INSTANCE_ID, UNITY_FOG_COORDS(1)
+private struct_member ::= !RIGHT_BRACE (template_declaration | function_declaration | variable_declaration | typedef_declaration
+                                       | macro_declaration | empty_declaration) {pin=1 recoverWhile=member_recover}
+
+array_specifier ::= LEFT_BRACKET expression? RIGHT_BRACKET {implements="consulo.shader.psi.ShaderArraySpecifier"}
+
+initializer ::= initializer_list | sampler_state_expr | expression
+
+initializer_list ::= LEFT_BRACE [initializer (COMMA initializer)* COMMA?] RIGHT_BRACE {pin=1}
+
+// Statements
+
+statement ::= compound_statement
+            | declaration_statement
+            | if_statement
+            | switch_statement
+            | case_label_statement
+            | while_statement
+            | do_statement
+            | for_statement
+            | jump_statement
+            | return_statement
+            | empty_statement
+            | expression_statement
+            | macro_statement
+
+compound_statement ::= LEFT_BRACE block_item* RIGHT_BRACE {pin=1 mixin="consulo.shader.hlsl.impl.psi.HlslLocalScopeMixin" implements="consulo.shader.psi.ShaderLocalScope"}
+
+private block_item ::= !RIGHT_BRACE statement {pin=1 recoverWhile=block_item_recover}
+
+// every token that can start a statement, expressions included: recoverWhile also runs after a statement that parsed
+private block_item_recover ::= !(SEMICOLON | RIGHT_BRACE | LEFT_BRACE | LEFT_BRACKET | TYPE | QUALIFIER | SOFT_QUALIFIER | STRUCT
+                               | TYPEDEF | ENUM | IF | SWITCH | CASE | DEFAULT | WHILE | DO | FOR | BREAK | CONTINUE | RETURN
+                               | DISCARD | IDENTIFIER | THIS | SIZEOF | INTEGER_LITERAL | FLOAT_LITERAL | BOOL_LITERAL
+                               | STRING_LITERAL | LEFT_PAREN | PLUS | DASH | BANG | TILDE | INC_OP | DEC_OP | COLON_COLON)
+
+declaration_statement ::= variable_declaration | typedef_declaration | enum_declaration {implements="consulo.shader.psi.ShaderDeclarationContainer"}
+
+expression_statement ::= expression_list SEMICOLON
+
+// a macro invocation standing for statements, without a semicolon: UNITY_SETUP_INSTANCE_ID(v)
+macro_statement ::= IDENTIFIER argument_list? &(IDENTIFIER | TYPE | QUALIFIER | SOFT_QUALIFIER | STRUCT | RETURN | IF | FOR | WHILE
+                                              | DO | SWITCH | CASE | DEFAULT | BREAK | CONTINUE | DISCARD | LEFT_BRACE
+                                              | RIGHT_BRACE)
+
+// also [unroll]; which compilers accept
+empty_statement ::= statement_attributes SEMICOLON
+
+// [unroll], [branch], or an unexpanded macro standing for one: UNITY_BRANCH, UNROLL
+private statement_attributes ::= (attribute | IDENTIFIER &(IF | FOR | WHILE | DO | SWITCH | LEFT_BRACKET | IDENTIFIER))*
+
+if_statement ::= statement_attributes IF LEFT_PAREN condition RIGHT_PAREN statement (ELSE statement)? {pin=2 mixin="consulo.shader.hlsl.impl.psi.HlslLocalScopeMixin" implements="consulo.shader.psi.ShaderLocalScope"}
+
+switch_statement ::= statement_attributes SWITCH LEFT_PAREN expression RIGHT_PAREN compound_statement {pin=2}
+
+case_label_statement ::= (CASE expression | DEFAULT) COLON {pin=1}
+
+while_statement ::= statement_attributes WHILE LEFT_PAREN condition RIGHT_PAREN statement {pin=2 mixin="consulo.shader.hlsl.impl.psi.HlslLocalScopeMixin" implements="consulo.shader.psi.ShaderLocalScope"}
+
+do_statement ::= statement_attributes DO statement WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON {pin=2}
+
+for_statement ::= statement_attributes FOR LEFT_PAREN for_init expression? SEMICOLON expression_list? RIGHT_PAREN statement {pin=2 mixin="consulo.shader.hlsl.impl.psi.HlslLocalScopeMixin" implements="consulo.shader.psi.ShaderLocalScope"}
+
+private for_init ::= variable_declaration | expression_statement | SEMICOLON
+
+jump_statement ::= (BREAK | CONTINUE | DISCARD) SEMICOLON {pin=1}
+
+return_statement ::= RETURN expression_list? SEMICOLON {pin=1}
+
+// Expressions, lowest priority first
+
+expression_list ::= expression (COMMA expression)*
+
+expression ::= assignment_expr
+             | conditional_expr
+             | logical_or_expr
+             | logical_and_expr
+             | bitwise_or_expr
+             | bitwise_xor_expr
+             | bitwise_and_expr
+             | equality_expr
+             | relational_expr
+             | shift_expr
+             | additive_expr
+             | multiplicative_expr
+             | prefix_group
+             | postfix_group
+             | primary_group
+
+assignment_expr ::= expression assignment_operator expression {rightAssociative=true}
+
+private assignment_operator ::= EQUAL | LEFT_ASSIGN | RIGHT_ASSIGN | ADD_ASSIGN | SUB_ASSIGN | MUL_ASSIGN | DIV_ASSIGN
+                              | MOD_ASSIGN | AND_ASSIGN | XOR_ASSIGN | OR_ASSIGN
+
+conditional_expr ::= expression QUESTION conditional_value COLON expression {rightAssociative=true}
+
+// a full expression, assignments included: b ? c = d : 10
+private conditional_value ::= expression
+
+logical_or_expr ::= expression OR_OP expression
+
+logical_and_expr ::= expression AND_OP expression
+
+bitwise_or_expr ::= expression VERTICAL_BAR expression
+
+bitwise_xor_expr ::= expression CARET expression
+
+bitwise_and_expr ::= expression AMPERSAND expression
+
+equality_expr ::= expression (EQ_OP | NE_OP) expression
+
+relational_expr ::= expression (LEFT_ANGLE | RIGHT_ANGLE | LE_OP | GE_OP) expression
+
+shift_expr ::= expression (LEFT_OP | RIGHT_OP) expression
+
+additive_expr ::= expression (PLUS | DASH) expression
+
+multiplicative_expr ::= expression (STAR | SLASH | PERCENT) expression
+
+private prefix_group ::= cast_expr | prefix_expr
+
+// (float3) n, (int) -1; a parenthesized name is a cast only when an operand follows: (Light) 0, but not (a) - b
+cast_expr ::= LEFT_PAREN cast_type RIGHT_PAREN expression
+
+private cast_type ::= modifier_list? TYPE template_argument_list? array_specifier*
+                    | type_name array_specifier* &(RIGHT_PAREN (IDENTIFIER | TYPE | INTEGER_LITERAL | FLOAT_LITERAL | BOOL_LITERAL | LEFT_PAREN | BANG | TILDE))
+
+prefix_expr ::= (PLUS | DASH | BANG | TILDE | INC_OP | DEC_OP) expression
+
+private postfix_group ::= call_expr | index_expr | member_expr | postfix_expr
+
+call_expr ::= expression argument_list {implements="consulo.shader.psi.ShaderCallExpression"}
+
+index_expr ::= expression LEFT_BRACKET index_value RIGHT_BRACKET {implements="consulo.shader.psi.ShaderIndexExpression"}
+
+// a separate rule, so that the index is a full expression and not an operand of the postfix priority
+private index_value ::= expression
+
+// buffer.Load<float4>(i): template arguments only before a call, so that a.x < b > c stays a comparison
+member_expr ::= expression DOT IDENTIFIER (template_argument_list &LEFT_PAREN)? {mixin="consulo.shader.hlsl.impl.psi.HlslMemberExprMixin" implements="consulo.shader.psi.ShaderMemberAccess"}
+
+postfix_expr ::= expression (INC_OP | DEC_OP)
+
+private primary_group ::= literal_expr | constructor_expr | sizeof_expr | this_expr | sampler_state_expr | compile_expr
+                        | reference_expr | parenthesized_expr
+
+literal_expr ::= INTEGER_LITERAL | FLOAT_LITERAL | BOOL_LITERAL | STRING_LITERAL+
+
+// float4 in float4(0, 0, 0, 1), vector<float, 2> in vector<float, 2>(x, y)
+constructor_expr ::= TYPE template_argument_list? array_specifier* {implements="consulo.shader.psi.ShaderConstructorExpression"}
+
+sizeof_expr ::= SIZEOF LEFT_PAREN (type_specifier RIGHT_PAREN | expression RIGHT_PAREN) {pin=1}
+
+this_expr ::= THIS
+
+sampler_state_expr ::= SAMPLER_STATE state_block {pin=1}
+
+// compile vs_3_0 VS() of the effect framework
+compile_expr ::= COMPILE IDENTIFIER expression {pin=1}
+
+reference_expr ::= COLON_COLON? name (COLON_COLON IDENTIFIER)* (template_argument_list &LEFT_PAREN)? {mixin="consulo.shader.hlsl.impl.psi.HlslReferenceExprMixin" implements="consulo.shader.psi.ShaderReferenceElement"}
+
+parenthesized_expr ::= LEFT_PAREN expression_list RIGHT_PAREN {pin=1 implements="consulo.shader.psi.ShaderParenthesizedExpression"}
+
+argument_list ::= LEFT_PAREN [initializer (COMMA initializer)*] RIGHT_PAREN {pin=1}

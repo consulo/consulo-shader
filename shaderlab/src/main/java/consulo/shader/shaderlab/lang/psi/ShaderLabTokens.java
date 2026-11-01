@@ -1,0 +1,83 @@
+/*
+ * Copyright 2013-2016 consulo.io
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package consulo.shader.shaderlab.lang.psi;
+
+import consulo.language.ast.IElementType;
+import consulo.language.ast.StandardTokenTypes;
+import consulo.shader.shaderlab.lang.ShaderLabLanguage;
+
+/**
+ * @author VISTALL
+ * @since 08.05.2015
+ */
+public interface ShaderLabTokens extends StandardTokenTypes {
+    IElementType IDENTIFIER = new IElementType("IDENTIFIER", ShaderLabLanguage.INSTANCE);
+
+    IElementType LINE_COMMENT = new IElementType("LINE_COMMENT", ShaderLabLanguage.INSTANCE);
+
+    IElementType BLOCK_COMMENT = new IElementType("BLOCK_COMMENT", ShaderLabLanguage.INSTANCE);
+
+    IElementType INTEGER_LITERAL = new IElementType("INTEGER_LITERAL", ShaderLabLanguage.INSTANCE);
+
+    IElementType STRING_LITERAL = new IElementType("STRING_LITERAL", ShaderLabLanguage.INSTANCE);
+
+    /**
+     * Unquoted text inside property attribute parentheses, e.g. {@code [Header(Some text)]}
+     */
+    IElementType UNQUOTED_STRING_LITERAL = new IElementType("UNQUOTED_STRING_LITERAL", ShaderLabLanguage.INSTANCE);
+
+    /**
+     * Whole {@code #warning}, {@code #error} or {@code #line} line. Filtered like a comment by the parser
+     */
+    IElementType PREPROCESSOR_LINE = new IElementType("PREPROCESSOR_LINE", ShaderLabLanguage.INSTANCE);
+
+    IElementType COMMA = new IElementType("COMMA", ShaderLabLanguage.INSTANCE);
+
+    IElementType LBRACE = new IElementType("LBRACE", ShaderLabLanguage.INSTANCE);
+
+    IElementType RBRACE = new IElementType("RBRACE", ShaderLabLanguage.INSTANCE);
+
+    IElementType EQ = new IElementType("EQ", ShaderLabLanguage.INSTANCE);
+
+    IElementType LPAR = new IElementType("LPAR", ShaderLabLanguage.INSTANCE);
+
+    IElementType RPAR = new IElementType("RPAR", ShaderLabLanguage.INSTANCE);
+
+    IElementType LBRACKET = new IElementType("LBRACKET", ShaderLabLanguage.INSTANCE);
+
+    IElementType RBRACKET = new IElementType("RBRACKET", ShaderLabLanguage.INSTANCE);
+
+    IElementType CGPROGRAM_KEYWORD = new IElementType("CGPROGRAM_KEYWORD", ShaderLabLanguage.INSTANCE);
+
+    IElementType CGINCLUDE_KEYWORD = new IElementType("CGINCLUDE_KEYWORD", ShaderLabLanguage.INSTANCE);
+
+    IElementType ENDCG_KEYWORD = new IElementType("ENDCG_KEYWORD", ShaderLabLanguage.INSTANCE);
+
+    IElementType HLSLPROGRAM_KEYWORD = new IElementType("HLSLPROGRAM_KEYWORD", ShaderLabLanguage.INSTANCE);
+
+    IElementType HLSLINCLUDE_KEYWORD = new IElementType("HLSLINCLUDE_KEYWORD", ShaderLabLanguage.INSTANCE);
+
+    IElementType ENDHLSL_KEYWORD = new IElementType("ENDHLSL_KEYWORD", ShaderLabLanguage.INSTANCE);
+
+    IElementType GLSLPROGRAM_KEYWORD = new IElementType("GLSLPROGRAM_KEYWORD", ShaderLabLanguage.INSTANCE);
+
+    IElementType GLSLINCLUDE_KEYWORD = new IElementType("GLSLINCLUDE_KEYWORD", ShaderLabLanguage.INSTANCE);
+
+    IElementType ENDGLSL_KEYWORD = new IElementType("ENDGLSL_KEYWORD", ShaderLabLanguage.INSTANCE);
+
+    IElementType SHADERSCRIPT = new IElementType("SHADERSCRIPT", ShaderLabLanguage.INSTANCE);
+}

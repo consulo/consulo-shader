@@ -1,0 +1,604 @@
+# Godot shading language built-ins. Facts (names, signatures, availability) derived from
+# gdshader-support (https://github.com/akghxhs55/gdshader-support), MIT License,
+# Copyright (c) 2025-2026 Jaeho Yi. See NOTICE.txt. Format is documented in GodotBuiltinsParser.
+#
+# Format (parsed by GodotBuiltinsParser):
+#   '#' starts a comment line; blank lines are ignored.
+#   A section header is "[<kind> [<name>] @ <target> <target> ...]".
+#   [functions ... @ <shader_type>:<context> ...]  one built-in function per line:
+#       <return type> <name>(<[in|out|inout] type name[?]>, ...)   "?" marks an optional parameter
+#   [variables ... @ <shader_type>:<context> ...]  one built-in variable per line:
+#       <in|out|inout> <type> <NAME>    in = read-only, out = write-only, inout = read/write
+#     <context> is "common" (anywhere in that shader type) or a processing function
+#     (vertex, fragment, light, start, process, sky, fog).
+#   [render_modes ... @ <shader_type> ...]     one render mode per line
+#   [stencil_modes ... @ <shader_type> ...]    one stencil mode per line
+#   [hints ... @ <uniform type> ...]           one uniform hint per line
+#
+# Corrections against gdshader-support: COLLISION_NORMAL is vec3 and COLLISION_DEPTH is float, USERDATAX is
+# expanded to USERDATA1..USERDATA6 (read/write), and the anisotropic filter hints are filter_*_mipmap_anisotropic.
+
+[functions global @ spatial:common canvas_item:common particles:common sky:common fog:common]
+vec_type radians(vec_type degrees)
+vec_type degrees(vec_type radians)
+vec_type sin(vec_type angle)
+vec_type cos(vec_type angle)
+vec_type tan(vec_type angle)
+vec_type asin(vec_type x)
+vec_type acos(vec_type x)
+vec_type atan(vec_type y_over_x)
+vec_type atan(vec_type y, vec_type x)
+vec_type sinh(vec_type x)
+vec_type cosh(vec_type x)
+vec_type tanh(vec_type x)
+vec_type asinh(vec_type x)
+vec_type acosh(vec_type x)
+vec_type atanh(vec_type x)
+vec_type pow(vec_type x, vec_type y)
+vec_type exp(vec_type x)
+vec_type exp2(vec_type x)
+vec_type log(vec_type x)
+vec_type log2(vec_type x)
+vec_type sqrt(vec_type x)
+vec_type inversesqrt(vec_type x)
+vec_type abs(vec_type x)
+vec_int_type abs(vec_int_type x)
+vec_type sign(vec_type x)
+vec_int_type sign(vec_int_type x)
+vec_type floor(vec_type x)
+vec_type round(vec_type x)
+vec_type roundEven(vec_type x)
+vec_type trunc(vec_type x)
+vec_type ceil(vec_type x)
+vec_type fract(vec_type x)
+vec_type mod(vec_type x, vec_type y)
+vec_type mod(vec_type x, float y)
+vec_type modf(vec_type x, out vec_type i)
+vec_type min(vec_type a, vec_type b)
+vec_type min(vec_type a, float b)
+vec_int_type min(vec_int_type a, vec_int_type b)
+vec_int_type min(vec_int_type a, int b)
+vec_uint_type min(vec_uint_type a, vec_uint_type b)
+vec_uint_type min(vec_uint_type a, uint b)
+vec_type max(vec_type a, vec_type b)
+vec_type max(vec_type a, float b)
+vec_uint_type max(vec_uint_type a, vec_uint_type b)
+vec_uint_type max(vec_uint_type a, uint b)
+vec_int_type max(vec_int_type a, vec_int_type b)
+vec_int_type max(vec_int_type a, int b)
+vec_type clamp(vec_type x, vec_type minVal, vec_type maxVal)
+vec_type clamp(vec_type x, float minVal, float maxVal)
+vec_int_type clamp(vec_int_type x, vec_int_type minVal, vec_int_type maxVal)
+vec_int_type clamp(vec_int_type x, int minVal, int maxVal)
+vec_uint_type clamp(vec_uint_type x, vec_uint_type minVal, vec_uint_type maxVal)
+vec_uint_type clamp(vec_uint_type x, uint minVal, uint maxVal)
+vec_type mix(vec_type a, vec_type b, vec_type c)
+vec_type mix(vec_type a, vec_type b, float c)
+vec_type mix(vec_type a, vec_type b, vec_bool_type c)
+vec_type fma(vec_type a, vec_type b, vec_type c)
+vec_type step(vec_type a, vec_type b)
+vec_type step(float a, vec_type b)
+vec_type smoothstep(vec_type a, vec_type b, vec_type c)
+vec_type smoothstep(float a, float b, vec_type c)
+vec_bool_type isnan(vec_type x)
+vec_bool_type isinf(vec_type x)
+vec_int_type floatBitsToInt(vec_type x)
+vec_uint_type floatBitsToUint(vec_type x)
+vec_type intBitsToFloat(vec_int_type x)
+vec_type uintBitsToFloat(vec_uint_type x)
+float length(vec_type x)
+float distance(vec_type a, vec_type b)
+float dot(vec_type a, vec_type b)
+vec3 cross(vec3 a, vec3 b)
+vec_type normalize(vec_type x)
+vec3 reflect(vec3 I, vec3 N)
+vec3 refract(vec3 I, vec3 N, float eta)
+vec_type faceforward(vec_type N, vec_type I, vec_type Nref)
+mat_type matrixCompMult(mat_type x, mat_type y)
+mat_type outerProduct(vec_type column, vec_type row)
+mat_type transpose(mat_type m)
+float determinant(mat_type m)
+mat_type inverse(mat_type m)
+vec_bool_type lessThan(vec_type x, vec_type y)
+vec_bool_type greaterThan(vec_type x, vec_type y)
+vec_bool_type lessThanEqual(vec_type x, vec_type y)
+vec_bool_type greaterThanEqual(vec_type x, vec_type y)
+vec_bool_type equal(vec_type x, vec_type y)
+vec_bool_type notEqual(vec_type x, vec_type y)
+bool any(vec_bool_type x)
+bool all(vec_bool_type x)
+vec_bool_type not(vec_bool_type x)
+ivec2 textureSize(gsampler2D s, int lod)
+ivec2 textureSize(samplerCube s, int lod)
+ivec2 textureSize(samplerCubeArray s, int lod)
+ivec3 textureSize(gsampler2DArray s, int lod)
+ivec3 textureSize(gsampler3D s, int lod)
+int textureQueryLevels(gsampler2D s)
+int textureQueryLevels(gsampler2DArray s)
+int textureQueryLevels(gsampler3D s)
+int textureQueryLevels(samplerCube s)
+gvec4_type texture(gsampler2D s, vec2 p, float bias?)
+gvec4_type texture(gsampler2DArray s, vec3 p, float bias?)
+gvec4_type texture(gsampler3D s, vec3 p, float bias?)
+vec4 texture(samplerCube s, vec3 p, float bias?)
+vec4 texture(samplerCubeArray s, vec4 p, float bias?)
+vec4 texture(samplerExternalOES s, vec2 p, float bias?)
+gvec4_type textureProj(gsampler2D s, vec3 p, float bias?)
+gvec4_type textureProj(gsampler2D s, vec4 p, float bias?)
+gvec4_type textureProj(gsampler3D s, vec4 p, float bias?)
+gvec4_type textureLod(gsampler2D s, vec2 p, float lod)
+gvec4_type textureLod(gsampler2DArray s, vec3 p, float lod)
+gvec4_type textureLod(gsampler3D s, vec3 p, float lod)
+vec4 textureLod(samplerCube s, vec3 p, float lod)
+vec4 textureLod(samplerCubeArray s, vec4 p, float lod)
+gvec4_type textureProjLod(gsampler2D s, vec3 p, float lod)
+gvec4_type textureProjLod(gsampler2D s, vec4 p, float lod)
+gvec4_type textureProjLod(gsampler3D s, vec4 p, float lod)
+gvec4_type textureGrad(gsampler2D s, vec2 p, vec2 dPdx, vec2 dPdy)
+gvec4_type textureGrad(gsampler2DArray s, vec3 p, vec2 dPdx, vec2 dPdy)
+gvec4_type textureGrad(gsampler3D s, vec3 p, vec2 dPdx, vec2 dPdy)
+vec4 textureGrad(samplerCube s, vec3 p, vec3 dPdx, vec3 dPdy)
+vec4 textureGrad(samplerCubeArray s, vec3 p, vec3 dPdx, vec3 dPdy)
+gvec4_type textureProjGrad(gsampler2D s, vec3 p, vec2 dPdx, vec2 dPdy)
+gvec4_type textureProjGrad(gsampler2D s, vec4 p, vec2 dPdx, vec2 dPdy)
+gvec4_type textureProjGrad(gsampler3D s, vec4 p, vec3 dPdx, vec3 dPdy)
+gvec4_type texelFetch(gsampler2D s, ivec2 p, int lod)
+gvec4_type texelFetch(gsampler2DArray s, ivec3 p, int lod)
+gvec4_type texelFetch(gsampler3D s, ivec3 p, int lod)
+gvec4_type textureGather(gsampler2D s, vec2 p, int comps?)
+gvec4_type textureGather(gsampler2DArray s, vec3 p, int comps?)
+vec4 textureGather(samplerCube s, vec3 p, int comps?)
+vec_type fwidth(vec_type p)
+uint packHalf2x16(vec2 v)
+vec2 unpackHalf2x16(uint v)
+uint packUnorm2x16(vec2 v)
+vec2 unpackUnorm2x16(uint v)
+uint packSnorm2x16(vec2 v)
+vec2 unpackSnorm2x16(uint v)
+uint packUnorm4x8(vec4 v)
+vec4 unpackUnorm4x8(uint v)
+uint packSnorm4x8(vec4 v)
+vec4 unpackSnorm4x8(uint v)
+vec_int_type bitfieldExtract(vec_int_type value, int offset, int bits)
+vec_uint_type bitfieldExtract(vec_uint_type value, int offset, int bits)
+vec_uint_type bitfieldExtract(vec_uint_type value, int offset, int bits)
+vec_uint_type bitfieldInsert(vec_uint_type base, vec_uint_type insert, int offset, int bits)
+vec_int_type bitfieldReverse(vec_int_type value)
+vec_uint_type bitfieldReverse(vec_uint_type value)
+vec_int_type bitCount(vec_int_type value)
+vec_uint_type bitCount(vec_uint_type value)
+vec_int_type findLSB(vec_int_type value)
+vec_uint_type findLSB(vec_uint_type value)
+vec_int_type findMSB(vec_int_type value)
+vec_uint_type findMSB(vec_uint_type value)
+void imulExtended(vec_int_type x, vec_int_type y, out vec_int_type msb, out vec_int_type lsb)
+void umulExtended(vec_uint_type x, vec_uint_type y, out vec_uint_type msb, out vec_uint_type lsb)
+vec_uint_type uaddCarry(vec_uint_type x, vec_uint_type y, out vec_uint_type carry)
+vec_uint_type usubBorrow(vec_uint_type x, vec_uint_type y, out vec_uint_type borrow)
+vec_type ldexp(vec_type x, out vec_int_type exp)
+vec_type frexp(vec_type x, out vec_int_type exp)
+
+[functions fragment_only @ spatial:common canvas_item:common sky:common]
+vec2 textureQueryLod(gsampler2D s, vec2 p)
+vec2 textureQueryLod(gsampler2DArray s, vec2 p)
+vec2 textureQueryLod(gsampler3D s, vec3 p)
+vec2 textureQueryLod(samplerCube s, vec3 p)
+vec_type dFdx(vec_type p)
+vec_type dFdxCoarse(vec_type p)
+vec_type dFdxFine(vec_type p)
+vec_type dFdy(vec_type p)
+vec_type dFdyCoarse(vec_type p)
+vec_type dFdyFine(vec_type p)
+vec_type fwidthCoarse(vec_type p)
+vec_type fwidthFine(vec_type p)
+
+[functions sdf @ canvas_item:fragment canvas_item:light]
+float texture_sdf(vec2 sdf_pos)
+vec2 texture_sdf_normal(vec2 sdf_pos)
+vec2 sdf_to_screen_uv(vec2 sdf_pos)
+vec2 screen_uv_to_sdf(vec2 uv)
+
+[functions particles_common @ particles:common]
+bool emit_subparticle(mat4 xform, vec3 velocity, vec4 color, vec4 custom, uint flags)
+
+[variables global @ spatial:common canvas_item:common particles:common sky:common fog:common]
+in float TIME
+in float PI
+in float TAU
+in float E
+
+[variables particles_start_process @ particles:start particles:process]
+in float LIFETIME
+in float DELTA
+in uint NUMBER
+in uint INDEX
+in mat4 EMISSION_TRANSFORM
+in uint RANDOM_SEED
+inout bool ACTIVE
+inout vec4 COLOR
+inout vec3 VELOCITY
+inout mat4 TRANSFORM
+inout vec4 CUSTOM
+inout float MASS
+inout vec4 USERDATA1
+inout vec4 USERDATA2
+inout vec4 USERDATA3
+inout vec4 USERDATA4
+inout vec4 USERDATA5
+inout vec4 USERDATA6
+in uint FLAG_EMIT_POSITION
+in uint FLAG_EMIT_ROT_SCALE
+in uint FLAG_EMIT_VELOCITY
+in uint FLAG_EMIT_COLOR
+in uint FLAG_EMIT_CUSTOM
+in vec3 EMITTER_VELOCITY
+in float INTERPOLATE_TO_END
+in float AMOUNT_RATIO
+
+[variables spatial_common @ spatial:common]
+in bool OUTPUT_IS_SRGB
+in float CLIP_SPACE_FAR
+in bool IS_MULTIVIEW
+in bool IN_SHADOW_PASS
+
+[variables spatial_vertex @ spatial:vertex]
+in vec2 VIEWPORT_SIZE
+in mat4 VIEW_MATRIX
+in mat4 INV_VIEW_MATRIX
+in mat4 MAIN_CAM_INV_VIEW_MATRIX
+in mat4 INV_PROJECTION_MATRIX
+in vec3 NODE_POSITION_WORLD
+in vec3 NODE_POSITION_VIEW
+in vec3 CAMERA_POSITION_WORLD
+in vec3 CAMERA_DIRECTION_WORLD
+in uint CAMERA_VISIBLE_LAYERS
+in int INSTANCE_ID
+in vec4 INSTANCE_CUSTOM
+in int VIEW_INDEX
+in int VIEW_MONO_LEFT
+in int VIEW_RIGHT
+in vec3 EYE_OFFSET
+inout vec3 VERTEX
+in int VERTEX_ID
+inout vec3 NORMAL
+inout vec3 TANGENT
+inout vec3 BINORMAL
+out vec4 POSITION
+inout vec2 UV
+inout vec2 UV2
+inout vec4 COLOR
+out float ROUGHNESS
+inout float POINT_SIZE
+inout mat4 MODELVIEW_MATRIX
+inout mat3 MODELVIEW_NORMAL_MATRIX
+in mat4 MODEL_MATRIX
+in mat3 MODEL_NORMAL_MATRIX
+inout mat4 PROJECTION_MATRIX
+in uvec4 BONE_INDICES
+in vec4 BONE_WEIGHTS
+in vec4 CUSTOM0
+in vec4 CUSTOM1
+in vec4 CUSTOM2
+in vec4 CUSTOM3
+out float Z_CLIP_SCALE
+
+[variables spatial_fragment @ spatial:fragment]
+in vec2 VIEWPORT_SIZE
+in vec4 FRAGCOORD
+in bool FRONT_FACING
+in vec3 VIEW
+in vec2 UV
+in vec2 UV2
+in vec4 COLOR
+in vec2 POINT_COORD
+in mat4 MODEL_MATRIX
+in mat3 MODEL_NORMAL_MATRIX
+in mat4 VIEW_MATRIX
+in mat4 INV_VIEW_MATRIX
+in mat4 PROJECTION_MATRIX
+in mat4 INV_PROJECTION_MATRIX
+in vec3 NODE_POSITION_WORLD
+in vec3 NODE_POSITION_VIEW
+in vec3 CAMERA_POSITION_WORLD
+in vec3 CAMERA_DIRECTION_WORLD
+in uint CAMERA_VISIBLE_LAYERS
+in vec3 VERTEX
+inout vec3 LIGHT_VERTEX
+in int VIEW_INDEX
+in int VIEW_MONO_LEFT
+in int VIEW_RIGHT
+in vec3 EYE_OFFSET
+in vec2 SCREEN_UV
+out float DEPTH
+inout vec3 NORMAL
+inout vec3 TANGENT
+inout vec3 BINORMAL
+out vec3 NORMAL_MAP
+out float NORMAL_MAP_DEPTH
+out vec3 BENT_NORMAL_MAP
+out vec3 ALBEDO
+out float ALPHA
+out float ALPHA_SCISSOR_THRESHOLD
+out float ALPHA_HASH_SCALE
+out float ALPHA_ANTIALIASING_EDGE
+out vec2 ALPHA_TEXTURE_COORDINATE
+out float PREMUL_ALPHA_FACTOR
+out float METALLIC
+out float SPECULAR
+out float ROUGHNESS
+out float RIM
+out float RIM_TINT
+out float CLEARCOAT
+out float CLEARCOAT_GLOSS
+out float CLEARCOAT_ROUGHNESS
+out float ANISOTROPY
+out vec2 ANISOTROPY_FLOW
+out float SSS_STRENGTH
+out vec4 SSS_TRANSMITTANCE_COLOR
+out float SSS_TRANSMITTANCE_DEPTH
+out float SSS_TRANSMISSION_BOOST
+inout vec3 BACKLIGHT
+out float AO
+out float AO_LIGHT_AFFECT
+out vec3 EMISSION
+out vec4 FOG
+out vec4 RADIANCE
+out vec4 IRRADIANCE
+
+[variables spatial_light @ spatial:light]
+in vec2 VIEWPORT_SIZE
+in vec4 FRAGCOORD
+in mat4 MODEL_MATRIX
+in mat4 INV_VIEW_MATRIX
+in mat4 VIEW_MATRIX
+in mat4 PROJECTION_MATRIX
+in mat4 INV_PROJECTION_MATRIX
+in vec3 NORMAL
+in vec2 SCREEN_UV
+in vec2 UV
+in vec2 UV2
+in vec3 VIEW
+in vec3 LIGHT
+in vec3 LIGHT_COLOR
+in float SPECULAR_AMOUNT
+in bool LIGHT_IS_DIRECTIONAL
+in float ATTENUATION
+in vec3 ALBEDO
+in vec3 BACKLIGHT
+in float METALLIC
+in float ROUGHNESS
+out vec3 DIFFUSE_LIGHT
+out vec3 SPECULAR_LIGHT
+out float ALPHA
+
+[variables canvas_item_vertex @ canvas_item:vertex]
+in mat4 MODEL_MATRIX
+in mat4 CANVAS_MATRIX
+in mat4 SCREEN_MATRIX
+in int INSTANCE_ID
+in vec4 INSTANCE_CUSTOM
+in bool AT_LIGHT_PASS
+in vec2 TEXTURE_PIXEL_SIZE
+inout vec2 VERTEX
+in int VERTEX_ID
+inout vec2 UV
+inout vec4 COLOR
+inout float POINT_SIZE
+in vec4 CUSTOM0
+in vec4 CUSTOM1
+
+[variables canvas_item_fragment @ canvas_item:fragment]
+in vec4 FRAGCOORD
+in vec2 SCREEN_PIXEL_SIZE
+in vec4 REGION_RECT
+in vec2 POINT_COORD
+in sampler2D TEXTURE
+in vec2 TEXTURE_PIXEL_SIZE
+in bool AT_LIGHT_PASS
+in sampler2D SPECULAR_SHININESS_TEXTURE
+in vec4 SPECULAR_SHININESS
+in vec2 UV
+in vec2 SCREEN_UV
+inout vec3 NORMAL
+in sampler2D NORMAL_TEXTURE
+out vec3 NORMAL_MAP
+out float NORMAL_MAP_DEPTH
+inout vec2 VERTEX
+inout vec2 SHADOW_VERTEX
+inout vec3 LIGHT_VERTEX
+inout vec4 COLOR
+
+[variables canvas_item_light @ canvas_item:light]
+in vec4 FRAGCOORD
+in vec3 NORMAL
+in vec4 COLOR
+in vec2 UV
+in sampler2D TEXTURE
+in vec2 TEXTURE_PIXEL_SIZE
+in vec2 SCREEN_UV
+in vec2 POINT_COORD
+in vec4 LIGHT_COLOR
+in float LIGHT_ENERGY
+in vec3 LIGHT_POSITION
+in vec3 LIGHT_DIRECTION
+in bool LIGHT_IS_DIRECTIONAL
+in vec3 LIGHT_VERTEX
+inout vec4 LIGHT
+in vec4 SPECULAR_SHININESS
+out vec4 SHADOW_MODULATE
+
+[variables particles_start @ particles:start]
+in bool RESTART_POSITION
+in bool RESTART_ROT_SCALE
+in bool RESTART_VELOCITY
+in bool RESTART_COLOR
+in bool RESTART_CUSTOM
+
+[variables particles_process @ particles:process]
+in bool RESTART
+in bool COLLIDED
+in vec3 COLLISION_NORMAL
+in float COLLISION_DEPTH
+in vec3 ATTRACTOR_FORCE
+
+[variables sky_common @ sky:common]
+in vec3 POSITION
+in samplerCube RADIANCE
+in bool AT_HALF_RES_PASS
+in bool AT_QUARTER_RES_PASS
+in bool AT_CUBEMAP_PASS
+in bool LIGHTX_ENABLED
+in float LIGHTX_ENERGY
+in vec3 LIGHTX_DIRECTION
+in vec3 LIGHTX_COLOR
+in float LIGHTX_SIZE
+
+[variables sky_sky @ sky:sky]
+in vec3 EYEDIR
+in vec2 SCREEN_UV
+in vec2 SKY_COORDS
+in vec4 HALF_RES_COLOR
+in vec4 QUARTER_RES_COLOR
+out vec3 COLOR
+out float ALPHA
+out vec4 FOG
+
+[variables fog_fog @ fog:fog]
+in vec3 WORLD_POSITION
+in vec3 OBJECT_POSITION
+in vec3 UVW
+in vec3 SIZE
+in vec3 SDF
+out vec3 ALBEDO
+out float DENSITY
+out vec3 EMISSION
+
+[render_modes spatial @ spatial]
+blend_mix
+blend_add
+blend_sub
+blend_mul
+blend_premul_alpha
+depth_draw_opaque
+depth_draw_always
+depth_draw_never
+depth_prepass_alpha
+depth_test_default
+depth_test_disabled
+depth_test_inverted
+specular_occlusion_disabled
+sss_mode_skin
+cull_back
+cull_front
+cull_disabled
+unshaded
+wireframe
+debug_shadow_splits
+diffuse_burley
+diffuse_lambert
+diffuse_lambert_wrap
+diffuse_toon
+specular_schlick_ggx
+specular_toon
+specular_disabled
+skip_vertex_transform
+world_vertex_coords
+ensure_correct_normals
+shadows_disabled
+ambient_light_disabled
+shadow_to_opacity
+vertex_lighting
+particle_trails
+alpha_to_coverage
+alpha_to_coverage_and_one
+fog_disabled
+
+[render_modes canvas_item @ canvas_item]
+blend_mix
+blend_add
+blend_sub
+blend_mul
+blend_premul_alpha
+blend_disabled
+unshaded
+light_only
+skip_vertex_transform
+world_vertex_coords
+
+[render_modes particles @ particles]
+keep_data
+disable_force
+disable_velocity
+collision_use_scale
+
+[render_modes sky @ sky]
+use_half_res_pass
+use_quarter_res_pass
+disable_fog
+
+[stencil_modes spatial @ spatial]
+read
+write
+write_if_depth_fail
+compare_always
+compare_less
+compare_equal
+compare_not_equal
+compare_less_or_equal
+compare_greater
+compare_greater_or_equal
+
+[hints vector @ vec3 vec4]
+instance_index
+source_color
+color_conversion_disabled
+
+[hints int @ int]
+instance_index
+hint_enum
+hint_range
+
+[hints float @ float]
+instance_index
+hint_range
+
+[hints sampler2D @ sampler2D]
+instance_index
+source_color
+hint_normal
+hint_default_white
+hint_default_black
+hint_default_transparent
+hint_anisotropy
+hint_roughness_r
+hint_roughness_g
+hint_roughness_b
+hint_roughness_a
+hint_roughness_normal
+hint_roughness_gray
+filter_nearest
+filter_linear
+filter_nearest_mipmap
+filter_linear_mipmap
+filter_nearest_mipmap_anisotropic
+filter_linear_mipmap_anisotropic
+repeat_enable
+repeat_disable
+hint_screen_texture
+hint_depth_texture
+hint_normal_roughness_texture
+
+[hints other_samplers @ sampler3D isampler3D usampler3D sampler2DArray isampler2DArray usampler2DArray samplerCube samplerCubeArray samplerExternalOES]
+instance_index
+source_color
+hint_default_white
+hint_default_black
+hint_default_transparent
+filter_nearest
+filter_linear
+filter_nearest_mipmap
+filter_linear_mipmap
+filter_nearest_mipmap_anisotropic
+filter_linear_mipmap_anisotropic
+repeat_enable
+repeat_disable
